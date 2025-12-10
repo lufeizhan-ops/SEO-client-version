@@ -1,0 +1,5 @@
+{
+  "name": "TaxFlow Client Portal",
+  "description": "A streamlined portal for TaxFlow clients to review titles, outlines, and content drafts via magic links.",
+  "requestFramePermissions": []
+}
