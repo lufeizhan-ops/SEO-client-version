@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquarePlus, X, Check, CornerUpLeft } from 'lucide-react';
+import { MessageSquare, CheckCircle, AlertCircle, MessageSquarePlus } from 'lucide-react';
 import { ContentBlock, Comment } from '../types';
 
 interface ContentReviewProps {
@@ -11,13 +11,7 @@ interface ContentReviewProps {
 const ContentReview: React.FC<ContentReviewProps> = ({ data, projectName, onSubmit }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
-  const [isCommentDrawerOpen, setIsCommentDrawerOpen] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
-
-  const handleBlockClick = (id: string) => {
-    setActiveBlockId(id);
-    setIsCommentDrawerOpen(true);
-  };
 
   const handlePostComment = () => {
     if (!activeBlockId || !newCommentText.trim()) return;
@@ -33,153 +27,188 @@ const ContentReview: React.FC<ContentReviewProps> = ({ data, projectName, onSubm
     setNewCommentText('');
   };
 
-  const activeComments = comments.filter(c => c.targetId === activeBlockId);
-  const totalComments = comments.length;
+  const getBlockComments = (blockId: string) => comments.filter(c => c.targetId === blockId);
 
   return (
-    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#FAFAFA]">
+    <div className="h-[calc(100vh-80px)] flex flex-col md:flex-row gap-6 max-w-7xl mx-auto">
       
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-12 flex justify-center">
-        <div className="max-w-2xl w-full bg-white shadow-sm border border-slate-100 p-12 min-h-[800px]">
-          <div className="mb-8 border-b pb-4">
-             <div className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold mb-2">Draft</div>
-             <p className="text-slate-400 text-sm">Last updated 2 hours ago</p>
-          </div>
-          
-          <div className="space-y-6 font-serif text-lg leading-relaxed text-slate-800">
-            {data.map((block) => {
-              const blockComments = comments.filter(c => c.targetId === block.id);
-              const hasComments = blockComments.length > 0;
-              const isActive = activeBlockId === block.id;
-
-              return (
-                <div 
-                  key={block.id}
-                  onClick={() => handleBlockClick(block.id)}
-                  className={`relative p-2 rounded-lg transition-colors cursor-text group ${
-                    isActive ? 'bg-indigo-50/50 ring-2 ring-indigo-100' : 
-                    hasComments ? 'bg-amber-50/50' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  {/* Visual Indicator for comments */}
-                  {hasComments && (
-                    <div className="absolute -right-12 top-2 w-8 h-8 flex items-center justify-center">
-                      <div className="bg-amber-100 text-amber-600 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-sm">
-                        {blockComments.length}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Render content based on type */}
-                  {block.type === 'header' && (
-                    <h2 className="text-3xl font-bold font-sans text-slate-900 mb-4 mt-8">{block.content}</h2>
-                  )}
-                  {block.type === 'paragraph' && (
-                    <p>{block.content}</p>
-                  )}
-                  {block.type === 'quote' && (
-                    <blockquote className="border-l-4 border-indigo-500 pl-4 italic text-slate-600 my-6">
-                      "{block.content}"
-                    </blockquote>
-                  )}
-                  {block.type === 'image' && (
-                     <div className="my-6 bg-slate-100 h-64 flex items-center justify-center rounded-lg text-slate-400">
-                        [Image Placeholder: {block.content}]
-                     </div>
-                  )}
-
-                  {/* Hover Action */}
-                  <div className={`absolute right-2 top-0 transform translate-y-[-50%] ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                    <button className="bg-white shadow-md border border-slate-200 rounded-full p-1.5 text-slate-500 hover:text-indigo-600">
-                      <MessageSquarePlus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Floating Action Bar (Sticky Bottom in Mobile, or Top Right) */}
-      <div className="absolute top-4 right-8 flex items-center gap-3">
-        <button 
-           onClick={() => onSubmit(false, comments)}
-           className="px-4 py-2 bg-white border border-slate-200 shadow-sm text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm flex items-center gap-2"
-        >
-          <CornerUpLeft className="w-4 h-4" /> Request Changes {totalComments > 0 && `(${totalComments})`}
-        </button>
-        <button 
-           onClick={() => onSubmit(true, comments)}
-           className="px-4 py-2 bg-indigo-600 shadow-md text-white rounded-lg hover:bg-indigo-700 font-medium text-sm flex items-center gap-2"
-        >
-          <Check className="w-4 h-4" /> Approve Final
-        </button>
-      </div>
-
-      {/* Comment Drawer */}
-      {isCommentDrawerOpen && (
-        <div className="w-80 bg-white border-l border-slate-200 shadow-xl flex flex-col h-full z-20 absolute right-0 top-0">
-          <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-            <h3 className="font-semibold text-slate-800">Add Comment</h3>
-            <button onClick={() => setIsCommentDrawerOpen(false)} className="text-slate-400 hover:text-slate-600">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-             {activeBlockId && (
-               <div className="text-xs text-slate-400 italic mb-4 border-l-2 border-slate-200 pl-2">
-                 Selected: "{data.find(b => b.id === activeBlockId)?.content.substring(0, 50)}..."
-               </div>
-             )}
-             
-             {activeComments.map(c => (
-               <div key={c.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                 <div className="flex justify-between mb-1">
-                   <span className="font-bold text-xs text-slate-700">{c.author}</span>
-                   <span className="text-xs text-slate-400">Today</span>
-                 </div>
-                 <p className="text-sm text-slate-800">{c.text}</p>
-               </div>
-             ))}
-
-             {activeComments.length === 0 && (
-               <div className="text-center py-8 text-slate-400 text-sm">
-                 No comments on this section yet.
-               </div>
-             )}
-          </div>
-
-          <div className="p-4 border-t bg-white">
-            <textarea
-              autoFocus
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-1 focus:ring-indigo-500 outline-none resize-none mb-2"
-              rows={3}
-              placeholder="Type your feedback here..."
-              value={newCommentText}
-              onChange={(e) => setNewCommentText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handlePostComment())}
-            />
-            <div className="flex justify-end gap-2">
-              <button 
-                onClick={() => setIsCommentDrawerOpen(false)}
-                className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handlePostComment}
-                disabled={!newCommentText.trim()}
-                className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-              >
-                Post Comment
-              </button>
+      {/* Left Column: Document Content */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <div className="mb-6 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Content Review</h1>
+              <p className="text-slate-600 mt-2">
+                Reviewing article: <span className="font-semibold text-slate-800">"{projectName}"</span>.
+              </p>
+            </div>
+            <div className="hidden sm:block">
+               <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold uppercase tracking-wide">Draft Mode</span>
             </div>
           </div>
         </div>
-      )}
+
+        {/* Scrollable Document Area */}
+        <div className="flex-1 overflow-y-auto pr-2 pb-20 scroll-smooth">
+          <div className="bg-white shadow-sm border border-slate-200 p-8 md:p-12 rounded-xl min-h-[600px]">
+             <div className="space-y-6 font-serif text-lg leading-relaxed text-slate-800">
+                {data.map((block) => {
+                  const blockComments = getBlockComments(block.id);
+                  const hasComments = blockComments.length > 0;
+                  const isActive = activeBlockId === block.id;
+
+                  return (
+                    <div 
+                      key={block.id}
+                      onClick={() => setActiveBlockId(block.id)}
+                      className={`relative p-4 -mx-4 rounded-lg transition-all duration-200 cursor-pointer border group ${
+                        isActive 
+                          ? 'bg-indigo-50/40 border-indigo-200 ring-1 ring-indigo-500/10' 
+                          : hasComments 
+                            ? 'bg-amber-50/40 border-amber-200' 
+                            : 'border-transparent hover:bg-slate-50 hover:border-slate-100'
+                      }`}
+                    >
+                      {/* Comment Counter Indicator */}
+                      {hasComments && (
+                         <div className="absolute right-2 top-2">
+                           <div className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                             <MessageSquare className="w-3 h-3" />
+                             {blockComments.length}
+                           </div>
+                         </div>
+                      )}
+
+                      {/* Content Rendering */}
+                      {block.type === 'header' && (
+                        <h2 className="text-2xl md:text-3xl font-bold font-sans text-slate-900 mb-2 mt-4">{block.content}</h2>
+                      )}
+                      {block.type === 'paragraph' && (
+                        <p>{block.content}</p>
+                      )}
+                      {block.type === 'quote' && (
+                        <blockquote className="border-l-4 border-indigo-500 pl-4 italic text-slate-600 my-4 bg-slate-50/50 py-2 rounded-r">
+                          "{block.content}"
+                        </blockquote>
+                      )}
+                      {block.type === 'image' && (
+                         <div className="my-4 bg-slate-100 h-48 flex items-center justify-center rounded-lg text-slate-400 text-sm border border-slate-200 border-dashed">
+                            [Image Placeholder: {block.content}]
+                         </div>
+                      )}
+
+                      {/* Hover Action Indicator */}
+                      <div className={`absolute right-2 top-1/2 -translate-y-1/2 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                        {!hasComments && <MessageSquarePlus className="w-5 h-5 text-indigo-300" />}
+                      </div>
+                    </div>
+                  );
+                })}
+             </div>
+          </div>
+          {/* Spacer for bottom scrolling */}
+          <div className="h-10"></div>
+        </div>
+      </div>
+
+      {/* Right Column: Sidebar (Comments & Actions) */}
+      <div className="w-full md:w-96 flex flex-col h-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex-shrink-0">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+          <h3 className="font-semibold text-slate-900">Comments & Actions</h3>
+          <span className="text-xs text-slate-400 font-medium">{comments.length} total</span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30">
+          {activeBlockId ? (
+            <>
+              {/* Context Header */}
+              <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
+                Selected Text
+              </div>
+              <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs text-slate-600 italic mb-6 shadow-sm border-l-4 border-l-indigo-500">
+                "{data.find(b => b.id === activeBlockId)?.content.substring(0, 100)}..."
+              </div>
+
+              {/* Comments List */}
+              <div className="space-y-3">
+                {getBlockComments(activeBlockId).map(comment => (
+                  <div key={comment.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="text-xs font-bold text-slate-900">{comment.author}</span>
+                      <span className="text-[10px] text-slate-400">
+                        {comment.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed">{comment.text}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Input Area */}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <textarea
+                  autoFocus
+                  className="w-full p-3 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white transition-shadow"
+                  placeholder="Type your feedback here..."
+                  rows={3}
+                  value={newCommentText}
+                  onChange={(e) => setNewCommentText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handlePostComment();
+                    }
+                  }}
+                />
+                <div className="flex justify-end mt-2">
+                    <button
+                    onClick={handlePostComment}
+                    disabled={!newCommentText.trim()}
+                    className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                    >
+                    Post Comment
+                    </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            // Empty State
+            <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 p-6">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                 <MessageSquare className="w-8 h-8 text-slate-300" />
+              </div>
+              <h4 className="text-slate-900 font-medium mb-1">No Selection</h4>
+              <p className="text-sm text-slate-500 max-w-[200px]">
+                Click on any paragraph, header, or image on the left to add comments.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Action Footer */}
+        <div className="p-4 bg-white border-t border-slate-200">
+          <p className="text-xs text-slate-400 text-center mb-3">
+             {comments.length === 0 ? 'No comments added yet.' : `${comments.length} comments recorded.`}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => onSubmit(false, comments)}
+              className="flex items-center justify-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors text-sm"
+            >
+              <AlertCircle className="w-4 h-4" />
+              Request Changes
+            </button>
+            <button
+              onClick={() => onSubmit(true, comments)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors text-sm shadow-md shadow-indigo-200"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Approve Content
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -11,22 +11,16 @@ const MOCK_TITLES: TitleOption[] = [
   {
     id: 't1',
     text: 'Small Business Tax Strategies: Maximize Deductions Before Year-End',
-    keywords: ['Tax deductions', 'Year-end planning', 'Small business tips'],
-    strategyGoal: 'Drive urgent consultation bookings for Q4.',
     isSelected: true
   },
   {
     id: 't2',
     text: 'The Essential Guide to 2024 Tax Changes for Entrepreneurs',
-    keywords: ['2024 tax changes', 'Entrepreneur tax guide'],
-    strategyGoal: 'Establish authority on upcoming legislation.',
     isSelected: false
   },
   {
     id: 't3',
     text: 'Unlock Hidden Savings: Proactive Tax Planning for Your Business',
-    keywords: ['Tax planning', 'Business savings'],
-    strategyGoal: 'Promote long-term advisory retainers.',
     isSelected: true
   }
 ];
@@ -56,7 +50,10 @@ const TASKS: ClientTask[] = [
     projectName: 'Q3 Tax Planning Guide',
     dueDate: 'Due Today',
     status: TaskStatus.PENDING,
-    titles: MOCK_TITLES
+    titles: MOCK_TITLES,
+    keywords: ['Tax deductions', 'Year-end planning', 'Small business tips'],
+    strategyGoal: 'Drive urgent consultation bookings for Q4 by highlighting expiring deductions.',
+    targetAudience: 'Small Business Owners & Freelancers earning $100k+',
   },
   {
     id: 'task-2',
@@ -148,8 +145,11 @@ const App: React.FC = () => {
           <TitleReview 
             data={currentTask.titles!} 
             projectName={currentTask.projectName}
-            onSubmit={(titles, rejected, reason) => {
-              console.log('Submitted Titles:', titles, rejected, reason);
+            keywords={currentTask.keywords || []}
+            strategyGoal={currentTask.strategyGoal || ''}
+            targetAudience={currentTask.targetAudience || ''}
+            onSubmit={(titles, rejected, reason, generalComments) => {
+              console.log('Submitted Titles:', titles, rejected, reason, generalComments);
               handleSubmit(true);
             }} 
           />

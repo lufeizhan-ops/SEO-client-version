@@ -13,8 +13,7 @@ export enum TaskStatus {
 export interface TitleOption {
   id: string;
   text: string;
-  keywords: string[];
-  strategyGoal: string;
+  // keywords & strategy removed from here as they are now shared
   isSelected: boolean;
   clientNotes?: string;
 }
@@ -54,4 +53,9 @@ export interface ClientTask {
   outline?: OutlineSection[];
   content?: ContentBlock[];
   comments?: Comment[];
+
+  // Shared Metadata for Title Review
+  keywords?: string[];
+  strategyGoal?: string;
+  targetAudience?: string;
 }
