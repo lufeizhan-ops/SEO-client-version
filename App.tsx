@@ -3,115 +3,253 @@ import Layout from './components/Layout';
 import TitleReview from './components/TitleReview';
 import OutlineReview from './components/OutlineReview';
 import ContentReview from './components/ContentReview';
-import { TaskType, TaskStatus, ClientTask, TitleOption, OutlineSection, ContentBlock } from './types';
-import { Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
-
-// --- MOCK DATA ---
-const MOCK_TITLES: TitleOption[] = [
-  {
-    id: 't1',
-    text: 'Small Business Tax Strategies: Maximize Deductions Before Year-End',
-    isSelected: true
-  },
-  {
-    id: 't2',
-    text: 'The Essential Guide to 2024 Tax Changes for Entrepreneurs',
-    isSelected: false
-  },
-  {
-    id: 't3',
-    text: 'Unlock Hidden Savings: Proactive Tax Planning for Your Business',
-    isSelected: true
-  }
-];
-
-const MOCK_OUTLINE: OutlineSection[] = [
-  { id: 'h1', level: 'H1', title: 'Small Business Tax Strategies: Maximize Deductions', wordCountEstimate: 50 },
-  { id: 'h2-1', level: 'H2', title: '1. Filing Status and Key Deadlines', description: 'Overview of critical dates to create urgency.', wordCountEstimate: 150 },
-  { id: 'h3-1', level: 'H3', title: '1.1. Understanding Your Entity Type', wordCountEstimate: 100 },
-  { id: 'h2-2', level: 'H2', title: '2. Major Tax Code Changes for 2024', description: 'Highlighting Section 179 updates.', wordCountEstimate: 200 },
-  { id: 'h3-2', level: 'H3', title: 'The Standard Deduction Increase', wordCountEstimate: 80 },
-  { id: 'h2-3', level: 'H2', title: '3. Maximizing Deductions and Credits', wordCountEstimate: 250 },
-];
-
-const MOCK_CONTENT: ContentBlock[] = [
-  { id: 'b1', type: 'header', content: 'Crypto Regulation Push 2024' },
-  { id: 'b2', type: 'paragraph', content: 'As global markets continue to evolve, the regulatory landscape for cryptocurrency is undergoing significant transformation. Startups in the fintech sector must navigate these changes carefully to ensure compliance and maintain operational integrity.' },
-  { id: 'b3', type: 'quote', content: 'Establish authority in crypto compliance for startups by leveraging automated tax reporting tools.' },
-  { id: 'b4', type: 'paragraph', content: 'The Securities and Exchange Commission (SEC) has signaled a shift towards stricter enforcement actions, focusing on unregistered securities offerings. This pivotal moment requires a proactive approach to legal strategy.' },
-  { id: 'b5', type: 'header', content: 'The Impact on DeFi Protocols' },
-  { id: 'b6', type: 'paragraph', content: 'Decentralized Finance (DeFi) protocols are not immune to scrutiny. The question of whether governance tokens constitute securities remains a heated debate within legal circles. ' },
-];
-
-const TASKS: ClientTask[] = [
-  {
-    id: 'task-1',
-    type: TaskType.TITLE_REVIEW,
-    projectName: 'Q3 Tax Planning Guide',
-    dueDate: 'Due Today',
-    status: TaskStatus.PENDING,
-    titles: MOCK_TITLES,
-    keywords: ['Tax deductions', 'Year-end planning', 'Small business tips'],
-    strategyGoal: 'Drive urgent consultation bookings for Q4 by highlighting expiring deductions.',
-    targetAudience: 'Small Business Owners & Freelancers earning $100k+',
-  },
-  {
-    id: 'task-2',
-    type: TaskType.OUTLINE_REVIEW,
-    projectName: '2024 Tax Compliance Guide',
-    dueDate: 'Due Tomorrow',
-    status: TaskStatus.PENDING,
-    outline: MOCK_OUTLINE
-  },
-  {
-    id: 'task-3',
-    type: TaskType.CONTENT_REVIEW,
-    projectName: 'Crypto Regulation Article',
-    dueDate: 'Due in 2 days',
-    status: TaskStatus.PENDING,
-    content: MOCK_CONTENT
-  }
-];
+import { TaskType, ClientTask, TitleOption, Comment } from './types';
+import { Loader2, ArrowRight, CheckCircle2, Download } from 'lucide-react';
+import { 
+  getArticlesAwaitingReview, 
+  submitTitleReview, 
+  submitOutlineReview,
+  submitContentReview 
+} from './services/articleService';
 
 // --- APP COMPONENT ---
 
 const App: React.FC = () => {
   const [view, setView] = useState<'LANDING' | 'TASK' | 'SUCCESS'>('LANDING');
   const [currentTask, setCurrentTask] = useState<ClientTask | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [tasks, setTasks] = useState<ClientTask[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulate Magic Link Validation
+  // Load articles awaiting title review from Supabase
   useEffect(() => {
-    // In a real app, we'd check URL params here
-    setTimeout(() => {
-      // Auto-load landing after "validating token"
-      setLoading(false); 
-    }, 800);
+    loadArticles();
   }, []);
 
-  const handleTaskSelect = (task: ClientTask) => {
+  const loadArticles = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setCurrentTask(task);
-      setView('TASK');
+    setError(null);
+    
+    try {
+      // Query all types of review (titles, outline, content)
+      const articles = await getArticlesAwaitingReview();
+      setTasks(articles);
+      
+      if (articles.length === 0) {
+        console.log('No articles awaiting review');
+      }
+    } catch (err: any) {
+      console.error('Failed to load articles:', err);
+      setError('Failed to load review tasks. Please try again.');
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
-  const handleSubmit = (success: boolean) => {
+  const handleTaskSelect = (task: ClientTask) => {
+    setCurrentTask(task);
+    setView('TASK');
+  };
+
+  const handleSubmit = async (
+    titles: TitleOption[],
+    rejected: boolean,
+    reason?: string,
+    generalComments?: string
+  ) => {
+    console.log('=== handleSubmit called ===');
+    console.log('currentTask:', currentTask);
+    console.log('titles:', titles);
+    console.log('rejected:', rejected);
+    console.log('generalComments:', generalComments);
+
+    if (!currentTask) {
+      console.error('No current task!');
+      return;
+    }
+
     setLoading(true);
-    // Simulate API Sync
-    setTimeout(() => {
+    setError(null);
+    
+    try {
+      console.log('Calling submitTitleReview...');
+      const result = await submitTitleReview(
+        currentTask.id,
+        titles,
+        rejected,
+        reason,
+        generalComments
+      );
+
+      console.log('submitTitleReview result:', result);
+
+      if (result.success) {
+        console.log('Success! Switching to SUCCESS view');
+        setLoading(false);
+        setView('SUCCESS');
+      } else {
+        console.error('Submit failed:', result.error);
+        setError(`Failed to submit review: ${result.error}`);
+        setLoading(false);
+      }
+    } catch (err: any) {
+      console.error('Error submitting review:', err);
+      setError('Failed to submit review. Please try again.');
       setLoading(false);
-      setView('SUCCESS');
-    }, 1500);
+    }
+  };
+
+  // Handle outline review submission
+  const handleOutlineSubmit = async (approved: boolean, comments: Comment[]) => {
+    console.log('=== handleOutlineSubmit called ===');
+    console.log('currentTask:', currentTask);
+    console.log('approved:', approved);
+    console.log('comments:', comments);
+
+    if (!currentTask) {
+      console.error('No current task!');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('Calling submitOutlineReview...');
+      const result = await submitOutlineReview(
+        currentTask.id,
+        approved,
+        comments.map(c => ({ targetId: c.targetId, text: c.text })),
+        '' // general comments
+      );
+
+      console.log('submitOutlineReview result:', result);
+
+      if (result.success) {
+        console.log('Success! Switching to SUCCESS view');
+        setLoading(false);
+        setView('SUCCESS');
+        // Reload articles to update the list
+        await loadArticles();
+      } else {
+        console.error('Submit failed:', result.error);
+        setError(`Failed to submit review: ${result.error}`);
+        setLoading(false);
+      }
+    } catch (err: any) {
+      console.error('Error submitting outline review:', err);
+      setError('Failed to submit review. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // Handle content review submission
+  const handleContentSubmit = async (approved: boolean, comments: Comment[]) => {
+    console.log('=== handleContentSubmit called ===');
+    console.log('currentTask:', currentTask);
+    console.log('approved:', approved);
+    console.log('comments:', comments);
+
+    if (!currentTask) {
+      console.error('No current task!');
+      return;
+    }
+
+    // If approved, export as Markdown first
+    if (approved) {
+      exportContentAsMarkdown();
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('Calling submitContentReview...');
+      const result = await submitContentReview(
+        currentTask.id,
+        approved,
+        comments.map(c => ({ targetId: c.targetId, text: c.text })),
+        '' // general comments
+      );
+
+      console.log('submitContentReview result:', result);
+
+      if (result.success) {
+        console.log('Success! Switching to SUCCESS view');
+        setLoading(false);
+        setView('SUCCESS');
+        // Reload articles to update the list
+        await loadArticles();
+      } else {
+        console.error('Submit failed:', result.error);
+        setError(`Failed to submit review: ${result.error}`);
+        setLoading(false);
+      }
+    } catch (err: any) {
+      console.error('Error submitting content review:', err);
+      setError('Failed to submit review. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // Export content as Markdown file
+  const exportContentAsMarkdown = () => {
+    if (!currentTask || !currentTask.content) return;
+
+    // Convert ContentBlock[] back to Markdown
+    let markdown = '';
+    currentTask.content.forEach(block => {
+      if (block.type === 'header') {
+        markdown += `# ${block.content}\n\n`;
+      } else if (block.type === 'paragraph') {
+        markdown += `${block.content}\n\n`;
+      } else if (block.type === 'quote') {
+        markdown += `> ${block.content}\n\n`;
+      } else if (block.type === 'image') {
+        markdown += `![${block.content}](${block.content})\n\n`;
+      }
+    });
+
+    // Create a blob and download
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentTask.projectName.replace(/\s+/g, '_')}_approved.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    console.log('Content exported as Markdown');
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
         <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium animate-pulse">Synchronizing secure workspace...</p>
+        <p className="text-slate-500 font-medium animate-pulse">Loading review tasks...</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && tasks.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-red-600 text-2xl">⚠️</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Connection Error</h1>
+          <p className="text-slate-600 mb-6">{error}</p>
+          <button 
+            onClick={loadArticles}
+            className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -125,10 +263,13 @@ const App: React.FC = () => {
         </div>
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Feedback Received!</h1>
         <p className="text-slate-600 max-w-md mb-8">
-          Your feedback has been securely synchronized with the TaxFlow Agency team. We will notify you when the next stage is ready.
+          Your feedback has been securely synchronized with the Agency team. We will notify you when the next stage is ready.
         </p>
         <button 
-          onClick={() => { setView('LANDING'); setCurrentTask(null); }}
+          onClick={() => { 
+            setView('LANDING'); 
+            setCurrentTask(null);
+          }}
           className="px-6 py-3 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-colors"
         >
           Return to Dashboard
@@ -137,7 +278,7 @@ const App: React.FC = () => {
     );
   }
 
-  // View: Specific Task Logic
+  // View: Specific Task Logic (Title Review, Outline Review, Content Review)
   if (view === 'TASK' && currentTask) {
     return (
       <Layout>
@@ -148,37 +289,30 @@ const App: React.FC = () => {
             keywords={currentTask.keywords || []}
             strategyGoal={currentTask.strategyGoal || ''}
             targetAudience={currentTask.targetAudience || ''}
-            onSubmit={(titles, rejected, reason, generalComments) => {
-              console.log('Submitted Titles:', titles, rejected, reason, generalComments);
-              handleSubmit(true);
-            }} 
+            onSubmit={handleSubmit} 
           />
         )}
+        
         {currentTask.type === TaskType.OUTLINE_REVIEW && (
           <OutlineReview 
-            data={currentTask.outline!}
+            data={currentTask.outline || []}
             projectName={currentTask.projectName}
-            onSubmit={(approved, comments) => {
-              console.log('Submitted Outline:', approved, comments);
-              handleSubmit(true);
-            }}
+            onSubmit={handleOutlineSubmit}
           />
         )}
+
         {currentTask.type === TaskType.CONTENT_REVIEW && (
-          <ContentReview
-            data={currentTask.content!}
+          <ContentReview 
+            data={currentTask.content || []}
             projectName={currentTask.projectName}
-            onSubmit={(approved, comments) => {
-               console.log('Submitted Content:', approved, comments);
-               handleSubmit(true);
-            }}
+            onSubmit={handleContentSubmit}
           />
         )}
       </Layout>
     );
   }
 
-  // View: Landing (Magic Link Destination)
+  // View: Landing - Show articles awaiting title review
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="max-w-md mx-auto pt-20 px-6">
@@ -186,39 +320,59 @@ const App: React.FC = () => {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600 text-white font-bold text-xl mb-4 shadow-lg shadow-indigo-200">
             T
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Welcome, John</h1>
-          <p className="text-slate-500 mt-2">You have <span className="font-bold text-indigo-600">3 pending items</span> for review.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Welcome, Client</h1>
+          <p className="text-slate-500 mt-2">
+            You have <span className="font-bold text-indigo-600">{tasks.length} pending {tasks.length === 1 ? 'item' : 'items'}</span> for review.
+          </p>
         </div>
 
-        <div className="space-y-4">
-          {TASKS.map((task) => (
-            <div 
-              key={task.id}
-              onClick={() => handleTaskSelect(task)}
-              className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group"
+        {tasks.length === 0 ? (
+          <div className="bg-white p-8 rounded-xl border border-slate-200 text-center">
+            <p className="text-slate-600">No articles awaiting review at this time.</p>
+            <button 
+              onClick={loadArticles}
+              className="mt-4 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
             >
-              <div className="flex justify-between items-start mb-2">
-                <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                  task.type === TaskType.TITLE_REVIEW ? 'bg-blue-50 text-blue-700' :
-                  task.type === TaskType.OUTLINE_REVIEW ? 'bg-purple-50 text-purple-700' :
-                  'bg-emerald-50 text-emerald-700'
-                }`}>
-                  {task.type.replace('_', ' ')}
-                </span>
-                <span className="text-xs text-slate-400 font-medium">{task.dueDate}</span>
+              Refresh
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {tasks.map((task) => (
+              <div 
+                key={task.id}
+                onClick={() => handleTaskSelect(task)}
+                className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                    task.type === TaskType.TITLE_REVIEW 
+                      ? 'bg-blue-50 text-blue-700' 
+                      : task.type === TaskType.OUTLINE_REVIEW
+                      ? 'bg-purple-50 text-purple-700'
+                      : 'bg-emerald-50 text-emerald-700'
+                  }`}>
+                    {task.type === TaskType.TITLE_REVIEW 
+                      ? 'TITLE REVIEW' 
+                      : task.type === TaskType.OUTLINE_REVIEW
+                      ? 'OUTLINE REVIEW'
+                      : 'CONTENT REVIEW'}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">{task.dueDate}</span>
+                </div>
+                <h3 className="text-lg font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                  {task.projectName}
+                </h3>
+                <div className="mt-4 flex items-center text-sm text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-[-10px] group-hover:translate-x-0 duration-200">
+                  Start Review <ArrowRight className="w-4 h-4 ml-1" />
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors">
-                {task.projectName}
-              </h3>
-              <div className="mt-4 flex items-center text-sm text-indigo-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-[-10px] group-hover:translate-x-0 duration-200">
-                Start Review <ArrowRight className="w-4 h-4 ml-1" />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         
         <p className="text-center text-xs text-slate-400 mt-12">
-          Secure link expires in 24 hours.
+          Secure review portal • Real-time sync
         </p>
       </div>
     </div>
