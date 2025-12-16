@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { ClientTask, TaskType, TaskStatus, TitleOption, OutlineSection } from '../types';
+import { ARTICLE_STATUS } from '../constants/status';
 
 /**
  * Article Service - Handles all Supabase database operations for articles
@@ -33,11 +34,6 @@ interface DatabaseArticle {
     id: string;
     name: string;
     strategy_goals: string | null;
-    clients: {
-      id: string;
-      name: string;
-      tone_of_voice: string | null;
-    };
   };
 }
 
@@ -53,12 +49,7 @@ export async function getArticlesAwaitingTitleReview(): Promise<ClientTask[]> {
         campaigns (
           id,
           name,
-          strategy_goals,
-          clients (
-            id,
-            name,
-            tone_of_voice
-          )
+          strategy_goals
         )
       `)
       .eq('status', 'AWAITING_REVIEW_TITLES')
@@ -93,12 +84,7 @@ export async function getArticlesAwaitingOutlineReview(): Promise<ClientTask[]> 
         campaigns (
           id,
           name,
-          strategy_goals,
-          clients (
-            id,
-            name,
-            tone_of_voice
-          )
+          strategy_goals
         )
       `)
       .eq('status', 'AWAITING_REVIEW_OUTLINE')
@@ -132,12 +118,7 @@ export async function getArticlesAwaitingReview(): Promise<ClientTask[]> {
         campaigns (
           id,
           name,
-          strategy_goals,
-          clients (
-            id,
-            name,
-            tone_of_voice
-          )
+          strategy_goals
         )
       `)
       .in('status', ['AWAITING_REVIEW_TITLES', 'AWAITING_REVIEW_OUTLINE', 'AWAITING_REVIEW_DRAFT'])
@@ -171,12 +152,7 @@ export async function getArticleById(articleId: string): Promise<ClientTask | nu
         campaigns (
           id,
           name,
-          strategy_goals,
-          clients (
-            id,
-            name,
-            tone_of_voice
-          )
+          strategy_goals
         )
       `)
       .eq('id', articleId)
@@ -257,13 +233,17 @@ export async function submitTitleReview(
         reviewer: 'client'
       };
 
-      console.log('Rejection: Updating original article to NEEDS_REVISION');
+      // Determine the appropriate revision status based on current article status
+      // For title review, we use NEEDS_TITLES_REVISION
+      const revisionStatus = ARTICLE_STATUS.NEEDS_TITLES_REVISION;
+      
+      console.log('Rejection: Updating original article to', revisionStatus);
 
       const { error } = await supabase
         .from('articles')
         .update({
           client_comments: clientComments,
-          status: 'NEEDS_REVISION'
+          status: revisionStatus
         })
         .eq('id', articleId);
 
@@ -375,7 +355,12 @@ export async function submitOutlineReview(
       generalComments: generalComments || null
     };
 
-    const newStatus = approved ? 'OUTLINE_APPROVED' : 'NEEDS_REVISION';
+    // Use specific revision status for outline review
+    const newStatus = approved 
+      ? ARTICLE_STATUS.OUTLINE_APPROVED 
+      : ARTICLE_STATUS.NEEDS_OUTLINE_REVISION;
+
+    console.log('Setting article status to:', newStatus);
 
     const { error } = await supabase
       .from('articles')
@@ -426,7 +411,12 @@ export async function submitContentReview(
       generalComments: generalComments || null
     };
 
-    const newStatus = approved ? 'DRAFT_APPROVED' : 'NEEDS_REVISION';
+    // Use specific revision status for draft/content review
+    const newStatus = approved 
+      ? ARTICLE_STATUS.DRAFT_APPROVED 
+      : ARTICLE_STATUS.NEEDS_DRAFT_REVISION;
+
+    console.log('Setting article status to:', newStatus);
 
     const { error } = await supabase
       .from('articles')
@@ -645,7 +635,7 @@ function articleToClientTask(article: DatabaseArticle): ClientTask {
     content, // Add content data
     keywords,
     strategyGoal: article.campaigns.strategy_goals || '',
-    targetAudience: article.campaigns.clients.tone_of_voice || 'General audience'
+    targetAudience: 'General audience' // Client-specific tone_of_voice removed in new schema
   };
 }
 

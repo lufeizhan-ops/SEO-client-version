@@ -10,6 +10,7 @@ interface TitleReviewProps {
   strategyGoal: string;
   targetAudience: string;
   onSubmit: (titles: TitleOption[], rejected: boolean, rejectReason?: string, generalComments?: string) => void;
+  readOnly?: boolean;
 }
 
 const TitleReview: React.FC<TitleReviewProps> = ({ 
@@ -18,7 +19,8 @@ const TitleReview: React.FC<TitleReviewProps> = ({
   keywords, 
   strategyGoal, 
   targetAudience, 
-  onSubmit 
+  onSubmit,
+  readOnly = false
 }) => {
   const [titles, setTitles] = useState<TitleOption[]>(data);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -267,28 +269,39 @@ const TitleReview: React.FC<TitleReviewProps> = ({
 
       </div>
 
-      {/* Floating Action Footer */}
-      <div className="sticky bottom-6 mt-8 bg-white/90 backdrop-blur-md p-4 rounded-xl border border-slate-200 shadow-lg flex justify-between items-center z-20">
-        <button 
-          onClick={() => setIsRejecting(true)}
-          className="px-6 py-2.5 text-red-600 font-medium hover:bg-red-50 rounded-lg transition-colors"
-        >
-          Reject All
-        </button>
-
-        <div className="flex items-center gap-4">
-          <span className="text-slate-600 hidden sm:inline-block">
-            {selectedCount} selected
-          </span>
-          <button
-            onClick={() => onSubmit(titles, false, undefined, generalComments)}
-            disabled={selectedCount === 0}
-            className="px-8 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200"
+      {/* Floating Action Footer - Only show when not in read-only mode */}
+      {!readOnly && (
+        <div className="sticky bottom-6 mt-8 bg-white/90 backdrop-blur-md p-4 rounded-xl border border-slate-200 shadow-lg flex justify-between items-center z-20">
+          <button 
+            onClick={() => setIsRejecting(true)}
+            className="px-6 py-2.5 text-red-600 font-medium hover:bg-red-50 rounded-lg transition-colors"
           >
-            Approve Selection ({selectedCount})
+            Reject All
           </button>
+
+          <div className="flex items-center gap-4">
+            <span className="text-slate-600 hidden sm:inline-block">
+              {selectedCount} selected
+            </span>
+            <button
+              onClick={() => onSubmit(titles, false, undefined, generalComments)}
+              disabled={selectedCount === 0}
+              className="px-8 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200"
+            >
+              Approve Selection ({selectedCount})
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Read-only notice */}
+      {readOnly && (
+        <div className="sticky bottom-6 mt-8 bg-slate-100 p-4 rounded-xl border border-slate-200 text-center">
+          <p className="text-slate-600">
+            <span className="font-medium">Read-only mode</span> — This review has been completed.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

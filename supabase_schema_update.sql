@@ -3,6 +3,81 @@
 -- ============================================
 -- This file contains updates to the existing schema to support
 -- the interaction between Agency Portal and Client Portal
+-- INCLUDING: Multi-client campaign support and email authentication
+-- ============================================
+
+-- ============================================
+-- SECTION A: CONTACTS TABLE (for email-based authentication)
+-- ============================================
+
+-- Create contacts table for multiple contact persons per client
+CREATE TABLE IF NOT EXISTS contacts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add unique constraint on email (globally unique)
+DO $$ BEGIN
+    ALTER TABLE contacts ADD CONSTRAINT contacts_email_unique UNIQUE (email);
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+-- Add indexes for contacts
+CREATE INDEX IF NOT EXISTS idx_contacts_client_id ON contacts(client_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(email);
+
+-- Grant permissions
+ALTER TABLE contacts DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE contacts TO public;
+
+COMMENT ON TABLE contacts IS 'Contact persons for each client. Each client can have multiple contacts.';
+COMMENT ON COLUMN contacts.email IS 'Email address used for Client Portal authentication.';
+
+-- ============================================
+-- SECTION B: CAMPAIGN_CLIENTS JUNCTION TABLE (many-to-many)
+-- ============================================
+
+-- Create junction table for campaigns and clients
+CREATE TABLE IF NOT EXISTS campaign_clients (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+    client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add unique constraint
+DO $$ BEGIN
+    ALTER TABLE campaign_clients ADD CONSTRAINT campaign_clients_unique UNIQUE (campaign_id, client_id);
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+-- Add indexes
+CREATE INDEX IF NOT EXISTS idx_campaign_clients_campaign ON campaign_clients(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_campaign_clients_client ON campaign_clients(client_id);
+
+-- Grant permissions
+ALTER TABLE campaign_clients DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE campaign_clients TO public;
+
+COMMENT ON TABLE campaign_clients IS 'Junction table for many-to-many relationship between campaigns and clients.';
+
+-- ============================================
+-- SECTION C: MIGRATE EXISTING DATA (if any)
+-- ============================================
+
+-- Migrate existing single-client relationships to junction table
+INSERT INTO campaign_clients (campaign_id, client_id)
+SELECT id, client_id FROM campaigns 
+WHERE client_id IS NOT NULL
+ON CONFLICT (campaign_id, client_id) DO NOTHING;
+
+-- ============================================
+-- SECTION D: ARTICLES TABLE UPDATES
 -- ============================================
 
 -- 1. Add missing fields to articles table
@@ -124,4 +199,30 @@ ADD COLUMN IF NOT EXISTS outline_sections JSONB;
 COMMENT ON COLUMN articles.outline_sections IS 
 'Structured outline data. Format: [{"id": "uuid", "level": "H1|H2|H3", "title": "string", "description": "string", "wordCountEstimate": number}]';
 
+-- ============================================
+-- SECTION E: HELPER VIEWS FOR AUTHENTICATION
+-- ============================================
+
+-- View to check if an email has access to a campaign
+CREATE OR REPLACE VIEW campaign_email_access AS
+SELECT DISTINCT
+    co.email,
+    cc.campaign_id,
+    c.name as campaign_name,
+    cl.id as client_id,
+    cl.name as client_name,
+    co.name as contact_name
+FROM contacts co
+JOIN clients cl ON co.client_id = cl.id
+JOIN campaign_clients cc ON cl.id = cc.client_id
+JOIN campaigns c ON cc.campaign_id = c.id;
+
+GRANT SELECT ON campaign_email_access TO public;
+
+-- ============================================
+-- VERIFICATION QUERIES (run manually to verify)
+-- ============================================
+-- SELECT * FROM contacts;
+-- SELECT * FROM campaign_clients;
+-- SELECT * FROM campaign_email_access WHERE email = 'test@example.com';
 
