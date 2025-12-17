@@ -66,6 +66,7 @@ const App: React.FC = () => {
   const [outlineEdits, setOutlineEdits] = useState<OutlineEditSuggestion[]>([]);
   const [contentEdits, setContentEdits] = useState<ContentEditSuggestion[]>([]);
   const [existingComments, setExistingComments] = useState<Comment[]>([]);
+  const [existingGeneralComments, setExistingGeneralComments] = useState<string>('');
   const [activeReviewers, setActiveReviewers] = useState<ActiveReviewer[]>([]);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
@@ -144,6 +145,7 @@ const App: React.FC = () => {
         if (draft) {
           console.log('✅ Draft found:', draft);
           setExistingComments(draft.draftComments);
+          setExistingGeneralComments(draft.generalComments || '');
           
           if (reviewType === 'outline') {
             setOutlineEdits(draft.draftEdits as OutlineEditSuggestion[]);
@@ -312,7 +314,7 @@ const App: React.FC = () => {
   };
 
   // Handle draft save for outline
-  const handleOutlineSaveDraft = async (comments: Comment[], edits: OutlineEditSuggestion[]) => {
+  const handleOutlineSaveDraft = async (comments: Comment[], edits: OutlineEditSuggestion[], generalComments?: string) => {
     if (!currentTask || !userEmail) return;
     
     console.log('💾 Saving outline draft...');
@@ -321,7 +323,9 @@ const App: React.FC = () => {
       userEmail,
       'outline',
       edits,
-      comments
+      comments,
+      {},
+      generalComments
     );
     
     if (result.success) {
@@ -332,7 +336,7 @@ const App: React.FC = () => {
   };
 
   // Handle draft save for content
-  const handleContentSaveDraft = async (comments: Comment[], edits: ContentEditSuggestion[]) => {
+  const handleContentSaveDraft = async (comments: Comment[], edits: ContentEditSuggestion[], generalComments?: string) => {
     if (!currentTask || !userEmail) return;
     
     console.log('💾 Saving content draft...');
@@ -341,7 +345,9 @@ const App: React.FC = () => {
       userEmail,
       'content',
       edits,
-      comments
+      comments,
+      {},
+      generalComments
     );
     
     if (result.success) {
@@ -395,8 +401,9 @@ const App: React.FC = () => {
   };
 
   // Handle outline review submission
-  const handleOutlineSubmit = async (approved: boolean, comments: Comment[], edits: OutlineEditSuggestion[]) => {
+  const handleOutlineSubmit = async (approved: boolean, comments: Comment[], edits: OutlineEditSuggestion[], generalComments?: string) => {
     console.log('=== handleOutlineSubmit called ===');
+    console.log('generalComments:', generalComments);
     if (!currentTask) {
       console.error('No current task!');
       return;
@@ -426,7 +433,7 @@ const App: React.FC = () => {
         currentTask.id,
         approved,
         comments.map(c => ({ targetId: c.targetId, text: c.text })),
-        ''
+        generalComments
       );
 
       if (result.success) {
@@ -448,8 +455,9 @@ const App: React.FC = () => {
   };
 
   // Handle content review submission
-  const handleContentSubmit = async (approved: boolean, comments: Comment[], edits: ContentEditSuggestion[]) => {
+  const handleContentSubmit = async (approved: boolean, comments: Comment[], edits: ContentEditSuggestion[], generalComments?: string) => {
     console.log('=== handleContentSubmit called ===');
+    console.log('generalComments:', generalComments);
     if (!currentTask) {
       console.error('No current task!');
       return;
@@ -483,7 +491,7 @@ const App: React.FC = () => {
         currentTask.id,
         approved,
         comments.map(c => ({ targetId: c.targetId, text: c.text })),
-        ''
+        generalComments
       );
 
       if (result.success) {
@@ -697,6 +705,7 @@ const App: React.FC = () => {
             activeReviewers={activeReviewers}
             contactName={userName || userEmail || 'Client'}
             contactEmail={userEmail || ''}
+            existingGeneralComments={existingGeneralComments}
             onSubmit={handleOutlineSubmit}
             onSaveDraft={handleOutlineSaveDraft}
             readOnly={isReadOnly}
@@ -712,6 +721,7 @@ const App: React.FC = () => {
             activeReviewers={activeReviewers}
             contactName={userName || userEmail || 'Client'}
             contactEmail={userEmail || ''}
+            existingGeneralComments={existingGeneralComments}
             onSubmit={handleContentSubmit}
             onSaveDraft={handleContentSaveDraft}
             readOnly={isReadOnly}

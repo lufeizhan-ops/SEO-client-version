@@ -347,12 +347,54 @@ export async function submitOutlineReview(
   console.log('generalComments:', generalComments);
 
   try {
+    // First, get existing article data to preserve history
+    const { data: existingArticle, error: fetchError } = await supabase
+      .from('articles')
+      .select('client_comments, revision_history, revision_round')
+      .eq('id', articleId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching article:', fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    // Get all pending edits from client_edits table
+    const { data: clientEdits, error: editsError } = await supabase
+      .from('client_edits')
+      .select('*')
+      .eq('article_id', articleId)
+      .eq('edit_type', 'outline')
+      .eq('status', 'pending');
+
+    if (editsError) {
+      console.warn('Error fetching client edits:', editsError);
+    }
+
+    console.log(`📝 Found ${clientEdits?.length || 0} pending outline edits`);
+
+    // Prepare revision history
+    const revisionHistory = existingArticle?.revision_history || [];
+    const currentRound = (existingArticle?.revision_round || 0) + 1;
+
+    // If there was a previous client_comments, add it to history
+    if (existingArticle?.client_comments) {
+      revisionHistory.push({
+        round: currentRound - 1,
+        ...existingArticle.client_comments,
+        archived_at: new Date().toISOString()
+      });
+    }
+
+    // Create new client_comments with edits included
     const clientComments = {
       action: approved ? 'approved' : 'revision_requested',
       reviewer: 'client',
       timestamp: new Date().toISOString(),
+      revision_round: currentRound,
       sectionComments: comments,
-      generalComments: generalComments || null
+      generalComments: generalComments || null,
+      edits: clientEdits || [] // Include all pending edits
     };
 
     // Use specific revision status for outline review
@@ -361,11 +403,14 @@ export async function submitOutlineReview(
       : ARTICLE_STATUS.NEEDS_OUTLINE_REVISION;
 
     console.log('Setting article status to:', newStatus);
+    console.log('Revision round:', currentRound);
 
     const { error } = await supabase
       .from('articles')
       .update({
         client_comments: clientComments,
+        revision_history: revisionHistory,
+        revision_round: currentRound,
         status: newStatus
       })
       .eq('id', articleId);
@@ -376,6 +421,7 @@ export async function submitOutlineReview(
     }
 
     console.log('=== submitOutlineReview SUCCESS ===');
+    console.log(`✅ Saved revision round ${currentRound} with ${clientEdits?.length || 0} edits`);
     return { success: true };
   } catch (error: any) {
     console.error('Failed to submit outline review:', error);
@@ -403,12 +449,54 @@ export async function submitContentReview(
   console.log('generalComments:', generalComments);
 
   try {
+    // First, get existing article data to preserve history
+    const { data: existingArticle, error: fetchError } = await supabase
+      .from('articles')
+      .select('client_comments, revision_history, revision_round')
+      .eq('id', articleId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching article:', fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    // Get all pending edits from client_edits table
+    const { data: clientEdits, error: editsError } = await supabase
+      .from('client_edits')
+      .select('*')
+      .eq('article_id', articleId)
+      .eq('edit_type', 'content')
+      .eq('status', 'pending');
+
+    if (editsError) {
+      console.warn('Error fetching client edits:', editsError);
+    }
+
+    console.log(`📝 Found ${clientEdits?.length || 0} pending content edits`);
+
+    // Prepare revision history
+    const revisionHistory = existingArticle?.revision_history || [];
+    const currentRound = (existingArticle?.revision_round || 0) + 1;
+
+    // If there was a previous client_comments, add it to history
+    if (existingArticle?.client_comments) {
+      revisionHistory.push({
+        round: currentRound - 1,
+        ...existingArticle.client_comments,
+        archived_at: new Date().toISOString()
+      });
+    }
+
+    // Create new client_comments with edits included
     const clientComments = {
       action: approved ? 'approved' : 'revision_requested',
       reviewer: 'client',
       timestamp: new Date().toISOString(),
+      revision_round: currentRound,
       contentComments: comments,
-      generalComments: generalComments || null
+      generalComments: generalComments || null,
+      edits: clientEdits || [] // Include all pending edits
     };
 
     // Use specific revision status for draft/content review
@@ -417,11 +505,14 @@ export async function submitContentReview(
       : ARTICLE_STATUS.NEEDS_DRAFT_REVISION;
 
     console.log('Setting article status to:', newStatus);
+    console.log('Revision round:', currentRound);
 
     const { error } = await supabase
       .from('articles')
       .update({
         client_comments: clientComments,
+        revision_history: revisionHistory,
+        revision_round: currentRound,
         status: newStatus
       })
       .eq('id', articleId);
@@ -432,6 +523,7 @@ export async function submitContentReview(
     }
 
     console.log('=== submitContentReview SUCCESS ===');
+    console.log(`✅ Saved revision round ${currentRound} with ${clientEdits?.length || 0} edits`);
     return { success: true };
   } catch (error: any) {
     console.error('Failed to submit content review:', error);

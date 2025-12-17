@@ -100,6 +100,7 @@ export interface ReviewDraft {
   draftEdits: EditSuggestion[];
   draftComments: Comment[];
   draftSelections: Record<string, any>; // For title selections, etc.
+  generalComments?: string; // General feedback on entire article
   updatedAt: Date;
 }
 

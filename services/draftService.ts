@@ -34,7 +34,8 @@ export async function saveDraft(
   reviewType: 'title' | 'outline' | 'content',
   edits: EditSuggestion[],
   comments: Comment[],
-  selections: Record<string, any> = {}
+  selections: Record<string, any> = {},
+  generalComments?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { data, error } = await supabase
@@ -46,6 +47,7 @@ export async function saveDraft(
         draft_edits: edits,
         draft_comments: comments,
         draft_selections: selections,
+        general_comments: generalComments || null,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'article_id,contact_email,review_type'
@@ -109,6 +111,7 @@ export async function loadDraft(
         timestamp: new Date(comment.timestamp)
       })),
       draftSelections: data.draft_selections || {},
+      generalComments: data.general_comments || undefined,
       updatedAt: new Date(data.updated_at)
     };
 

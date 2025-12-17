@@ -28,8 +28,9 @@ interface ContentReviewProps {
   activeReviewers?: ActiveReviewer[];
   contactName: string;
   contactEmail: string;
-  onSubmit: (approved: boolean, comments: Comment[], edits: ContentEditSuggestion[]) => void;
-  onSaveDraft: (comments: Comment[], edits: ContentEditSuggestion[]) => void;
+  existingGeneralComments?: string;
+  onSubmit: (approved: boolean, comments: Comment[], edits: ContentEditSuggestion[], generalComments?: string) => void;
+  onSaveDraft: (comments: Comment[], edits: ContentEditSuggestion[], generalComments?: string) => void;
   readOnly?: boolean;
 }
 
@@ -41,6 +42,7 @@ const ContentReview: React.FC<ContentReviewProps> = ({
   activeReviewers = [],
   contactName,
   contactEmail,
+  existingGeneralComments = '',
   onSubmit, 
   onSaveDraft,
   readOnly = false 
@@ -63,6 +65,9 @@ const ContentReview: React.FC<ContentReviewProps> = ({
     content: ''
   });
   
+  // State for general comments
+  const [generalComments, setGeneralComments] = useState(existingGeneralComments);
+  
   // Auto-save state
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -71,7 +76,8 @@ const ContentReview: React.FC<ContentReviewProps> = ({
   useEffect(() => {
     setComments(existingComments);
     setEdits(existingEdits);
-  }, [existingComments, existingEdits]);
+    setGeneralComments(existingGeneralComments);
+  }, [existingComments, existingEdits, existingGeneralComments]);
 
   // Track unsaved changes
   useEffect(() => {
@@ -226,13 +232,13 @@ const ContentReview: React.FC<ContentReviewProps> = ({
   };
 
   const handleSaveDraft = () => {
-    onSaveDraft(comments, edits);
+    onSaveDraft(comments, edits, generalComments);
     setLastSaved(new Date());
     setHasUnsavedChanges(false);
   };
 
   const handleSubmit = (approved: boolean) => {
-    onSubmit(approved, comments, edits);
+    onSubmit(approved, comments, edits, generalComments);
   };
 
   const getBlockComments = (blockId: string) => 
@@ -639,6 +645,19 @@ const ContentReview: React.FC<ContentReviewProps> = ({
             </div>
           )}
         </div>
+
+        {/* General Comments Section */}
+        {!readOnly && (
+          <div className="p-4 bg-slate-50/50 border-t border-slate-200">
+            <h3 className="text-sm font-semibold text-slate-900 mb-2 uppercase tracking-wide">General Comments (Optional)</h3>
+            <textarea
+              className="w-full min-h-[80px] p-3 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-y bg-white"
+              placeholder="Any other thoughts on the direction, tone, or style?"
+              value={generalComments}
+              onChange={(e) => setGeneralComments(e.target.value)}
+            />
+          </div>
+        )}
 
         {/* Action Footer */}
         <div className="p-4 bg-white border-t border-slate-200">
